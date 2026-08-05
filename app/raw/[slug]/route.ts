@@ -6,11 +6,11 @@ export const dynamic = "force-dynamic";
 type RawSnippetRow = {
   code: string;
   visibility: string;
-  password_hash: string | null;
+  access_password_hash: string | null;
 };
 
 export async function GET(
-  request: Request,
+  _request: Request,
   context: {
     params: Promise<{
       slug: string;
@@ -21,27 +21,30 @@ export async function GET(
     await ensureSchema();
 
     const { slug } = await context.params;
+    const cleanSlug = slug?.trim();
 
-    if (!slug || slug.trim().length === 0) {
+    if (!cleanSlug) {
       return new Response("Slug tidak valid", {
         status: 400,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
       });
     }
 
-    /*
-     * Endpoint raw hanya menampilkan snippet publik
-     * yang tidak dikunci password.
-     */
     const result = await query<RawSnippetRow>(
       `
         UPDATE snippets
         SET views = views + 1
         WHERE slug = $1
           AND visibility = 'public'
-          AND password_hash IS NULL
-        RETURNING code, visibility, password_hash
+          AND access_password_hash IS NULL
+        RETURNING
+          code,
+          visibility,
+          access_password_hash
       `,
-      [slug.trim()],
+      [cleanSlug],
     );
 
     const snippet = result.rows[0];
