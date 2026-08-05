@@ -43,6 +43,9 @@ export function getPool(): Pool {
 
   return pool;
 }
+export function db(): Pool {
+  return getPool();
+}
 
 /**
  * Helper untuk menjalankan query PostgreSQL.
