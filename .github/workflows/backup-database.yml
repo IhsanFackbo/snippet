@@ -1,0 +1,55 @@
+name: Backup PostgreSQL
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # Pukul 02.00 WIB setiap 3 hari
+    # Jadwal GitHub menggunakan UTC
+    - cron: "0 19 */3 * *"
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create database backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          BACKUP_FILE="codesphere-$(date -u +%Y-%m-%d-%H%M).dump"
+          pg_dump "$DATABASE_URL" \
+            --format=custom \
+            --no-owner \
+            --no-acl \
+            --file="$BACKUP_FILE"
+
+          echo "BACKUP_FILE=$BACKUP_FILE" >> "$GITHUB_ENV"
+
+      - name: Encrypt backup
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          openssl enc -aes-256-cbc \
+            -salt \
+            -pbkdf2 \
+            -in "$BACKUP_FILE" \
+            -out "$BACKUP_FILE.enc" \
+            -pass env:BACKUP_PASSWORD
+
+          rm "$BACKUP_FILE"
+          echo "ENCRYPTED_FILE=$BACKUP_FILE.enc" >> "$GITHUB_ENV"
+
+      - name: Save encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_number }}
+          path: ${{ env.ENCRYPTED_FILE }}
+          retention-days: 30
+          if-no-files-found: error
