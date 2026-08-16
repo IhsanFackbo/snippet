@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {requireSession} from "@/lib/auth";import {db,ensureSchema} from "@/lib/db";export const dynamic="force-dynamic";
+export async function PATCH(req:Request){try{await ensureSchema();const s=await requireSession();const {name,bio,avatar_url}=await req.json();await db().query("UPDATE users SET name=$1,bio=$2,avatar_url=$3 WHERE id=$4",[name,String(bio||"").slice(0,280),avatar_url||"",s.id]);return NextResponse.json({ok:true})}catch{return NextResponse.json({error:"Tidak diizinkan"},{status:401})}}

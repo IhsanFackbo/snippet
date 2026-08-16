@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server"; import {getSession} from "@/lib/auth"; import {db,ensureSchema} from "@/lib/db"; export const dynamic="force-dynamic";
+export async function GET(){await ensureSchema();const s=await getSession();if(!s)return NextResponse.json({user:null});const r=await db().query("SELECT id,name,username,email,bio,avatar_url,verified,role FROM users WHERE id=$1",[s.id]);return NextResponse.json({user:r.rows[0]||null})}
